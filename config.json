@@ -18,15 +18,26 @@
     "其他危大工程": {}
   },
   "key_supervision": {
-    "min_missing_items": 2,
-    "max_short_duration_days": 15,
-    "require_complex_env": true
+    "missing_items_trigger": {
+      "enabled": true,
+      "min_count": 2
+    },
+    "short_duration_trigger": {
+      "enabled": true,
+      "max_days": 15
+    },
+    "complex_env_trigger": {
+      "enabled": true
+    }
   },
   "complex_env_keywords": [
     "密集", "临近建筑", "管线", "地铁", "铁路", "河道",
     "边坡", "软土", "液化", "采空", "高层", "医院", "学校",
     "文物", "桥梁", "隧道", "高压", "油气", "居民区"
   ],
+  "weekly_report": {
+    "top_per_region": 3
+  },
   "inspection_questions": {
     "深基坑工程": [
       "基坑支护结构是否按设计方案实施?现场与方案是否一致?",

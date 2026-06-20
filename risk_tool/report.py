@@ -154,3 +154,90 @@ def print_region_summary(results: List[RiskResult]):
         missing_str = f"{YELLOW}{s['missing']}{RESET}" if s['missing'] > 0 else f"{s['missing']}"
         print(f"  {region:<14}{s['total']:>5}{s[GENERAL]:>8}{s[EXCEEDING]:>7}    {key_str}{'':<10}{missing_str}")
     print(f"{'='*60}\n")
+
+
+LEVEL_PRIORITY = {
+    KEY_SUPERVISION: 0,
+    EXCEEDING: 1,
+    GENERAL: 2,
+}
+
+
+def sort_by_priority(results: List[RiskResult]) -> List[RiskResult]:
+    return sorted(results, key=lambda r: (LEVEL_PRIORITY.get(r.level, 99), len(r.missing_items) * -1))
+
+
+def group_by_region(results: List[RiskResult]) -> Dict[str, List[RiskResult]]:
+    grouped = defaultdict(list)
+    for r in results:
+        grouped[r.region].append(r)
+    for region in grouped:
+        grouped[region] = sort_by_priority(grouped[region])
+    return dict(grouped)
+
+
+def print_weekly_report(results: List[RiskResult], top_per_region: int = 3):
+    if not results:
+        print(f"\n{DIM}未找到匹配的项目。{RESET}")
+        return
+
+    from datetime import datetime
+    today = datetime.now().strftime("%Y-%m-%d")
+
+    print(f"\n{'='*65}")
+    print(f"{BOLD}  危大工程周报 - 重点项目清单{RESET}  {DIM}({today}){RESET}")
+    print(f"{'='*65}")
+
+    general_n = sum(1 for r in results if r.level == GENERAL)
+    exceed_n = sum(1 for r in results if r.level == EXCEEDING)
+    key_n = sum(1 for r in results if r.level == KEY_SUPERVISION)
+    missing_n = sum(1 for r in results if r.missing_items)
+
+    print(f"  项目总数: {len(results)} | 一般危大: {general_n} | "
+          f"超规模: {exceed_n} | {RED}重点督办: {key_n}{RESET} | {YELLOW}缺项: {missing_n}{RESET}")
+
+    grouped = group_by_region(results)
+
+    for region in sorted(grouped.keys()):
+        items = grouped[region]
+        key_count = sum(1 for r in items if r.level == KEY_SUPERVISION)
+        exceed_count = sum(1 for r in items if r.level == EXCEEDING)
+
+        print(f"\n{BOLD}{CYAN}【{region}】{RESET}"
+              f"  共{len(items)}项  "
+              f"{RED}★重点{key_count}{RESET}  "
+              f"{YELLOW}▲超规模{exceed_count}{RESET}")
+        print(f"  {'-'*58}")
+
+        top_items = items[:top_per_region]
+        for i, r in enumerate(top_items, 1):
+            icon = LEVEL_ICONS.get(r.level, "○")
+            color = LEVEL_COLORS.get(r.level, "")
+            missing_tag = f" {RED}[缺{len(r.missing_items)}项]{RESET}" if r.missing_items else ""
+            print(f"  {i}. {color}{icon} {r.level}{RESET} - {BOLD}{r.project_name}{RESET}{missing_tag}")
+            print(f"     类型: {r.hazard_type}")
+            if r.key_reasons:
+                print(f"     关注原因: {r.key_reasons[0]}")
+            elif r.triggers:
+                print(f"     主要触发: {r.triggers[0]}")
+            if r.inspection_questions:
+                print(f"     重点追问: {r.inspection_questions[0]}")
+
+        if len(items) > top_per_region:
+            rest = items[top_per_region:]
+            rest_names = "、".join(r.project_name for r in rest[:3])
+            more = len(rest) - 3 if len(rest) > 3 else 0
+            suffix = f"等{len(rest)}项" if more > 0 else ""
+            print(f"  {DIM}  其余: {rest_names}{suffix}{RESET}")
+
+    all_key = [r for r in results if r.level == KEY_SUPERVISION]
+    if all_key:
+        print(f"\n{BOLD}{RED}  ★ 全集团重点督办项目 ({len(all_key)}项){RESET}")
+        print(f"  {'-'*58}")
+        for i, r in enumerate(sort_by_priority(all_key), 1):
+            print(f"  {i}. {r.project_name} ({r.region}) - {r.hazard_type}")
+            if r.key_reasons:
+                reasons = "；".join(r.key_reasons[:2])
+                print(f"     → {reasons}")
+
+    print(f"\n{'='*65}\n")

@@ -18,13 +18,24 @@
     "其他危大工程": {}
   },
   "key_supervision": {
-    "min_missing_items": 3,
-    "max_short_duration_days": 10,
-    "require_complex_env": false
+    "missing_items_trigger": {
+      "enabled": true,
+      "min_count": 3
+    },
+    "short_duration_trigger": {
+      "enabled": true,
+      "max_days": 10
+    },
+    "complex_env_trigger": {
+      "enabled": false
+    }
   },
   "complex_env_keywords": [
     "地铁", "铁路", "河道", "边坡", "软土", "液化", "采空"
   ],
+  "weekly_report": {
+    "top_per_region": 3
+  },
   "inspection_questions": {
     "深基坑工程": [
       "基坑支护结构是否按设计方案实施?",

@@ -98,20 +98,26 @@ def classify(project: Project, config: dict) -> RiskResult:
     key_reasons = []
 
     missing_count = _count_missing(project)
-    min_missing = key_cfg.get("min_missing_items", 2)
-    short_days = key_cfg.get("max_short_duration_days", 15)
 
-    if level == EXCEEDING and missing_count >= min_missing:
-        is_key = True
-        key_reasons.append(f"超过一定规模且缺项≥{min_missing}项(缺{missing_count}项)")
+    missing_trigger = key_cfg.get("missing_items_trigger", {})
+    if missing_trigger.get("enabled", False):
+        min_missing = missing_trigger.get("min_count", 2)
+        if level == EXCEEDING and missing_count >= min_missing:
+            is_key = True
+            key_reasons.append(f"超过一定规模且缺项≥{min_missing}项(缺{missing_count}项)")
 
-    if level == EXCEEDING and env_complex:
-        is_key = True
-        key_reasons.append("超过一定规模且周边环境复杂")
+    env_trigger = key_cfg.get("complex_env_trigger", {})
+    if env_trigger.get("enabled", False):
+        if level == EXCEEDING and env_complex:
+            is_key = True
+            key_reasons.append("超过一定规模且周边环境复杂")
 
-    if project.planned_duration is not None and project.planned_duration < short_days and level == EXCEEDING:
-        is_key = True
-        key_reasons.append(f"工期极紧(计划{project.planned_duration}天，短于{short_days}天阈值)")
+    duration_trigger = key_cfg.get("short_duration_trigger", {})
+    if duration_trigger.get("enabled", False):
+        short_days = duration_trigger.get("max_days", 15)
+        if project.planned_duration is not None and project.planned_duration < short_days and level == EXCEEDING:
+            is_key = True
+            key_reasons.append(f"工期极紧(计划{project.planned_duration}天，短于{short_days}天阈值)")
 
     if is_key:
         level = KEY_SUPERVISION
@@ -185,9 +191,11 @@ def _generate_questions(project: Project, level: str, env_complex: bool, missing
         if "总监审核意见" in missing:
             questions.append("总监审核意见缺失,方案审批流程是否闭环?")
 
-        short_days = config.get("key_supervision", {}).get("max_short_duration_days", 15)
-        if project.planned_duration is not None and project.planned_duration < short_days:
-            questions.append(f"工期仅{project.planned_duration}天,是否存在赶工压缩合理工期的情况?")
+        duration_trigger = config.get("key_supervision", {}).get("short_duration_trigger", {})
+        if duration_trigger.get("enabled", False):
+            short_days = duration_trigger.get("max_days", 15)
+            if project.planned_duration is not None and project.planned_duration < short_days:
+                questions.append(f"工期仅{project.planned_duration}天,是否存在赶工压缩合理工期的情况?")
 
     elif level == GENERAL:
         questions.extend(type_questions[:2])
