@@ -1,0 +1,58 @@
+[
+  {
+    "name": "雄安新区启动区深基坑",
+    "region": "华北区",
+    "hazard_type": "深基坑工程",
+    "excavation_depth": 7.2,
+    "scaffold_height": null,
+    "lifting_weight": null,
+    "surrounding_env": "临近铁路，地下管线密集",
+    "planned_duration": 40,
+    "has_monitoring": true,
+    "has_emergency_plan": true,
+    "has_expert_review_date": true,
+    "has_chief_review": true
+  },
+  {
+    "name": "滨海新区高支模工程",
+    "region": "华北区",
+    "hazard_type": "模板工程及支撑体系",
+    "excavation_depth": null,
+    "scaffold_height": 9.5,
+    "lifting_weight": null,
+    "surrounding_env": "软土地基",
+    "planned_duration": 25,
+    "has_monitoring": false,
+    "has_emergency_plan": true,
+    "has_expert_review_date": false,
+    "has_chief_review": true
+  },
+  {
+    "name": "苏州工业园区吊装工程",
+    "region": "华东区",
+    "hazard_type": "起重吊装及安拆工程",
+    "excavation_depth": null,
+    "scaffold_height": null,
+    "lifting_weight": 8.5,
+    "surrounding_env": "工业园区，场地开阔",
+    "planned_duration": 18,
+    "has_monitoring": true,
+    "has_emergency_plan": true,
+    "has_expert_review_date": true,
+    "has_chief_review": true
+  },
+  {
+    "name": "成都天府机场脚手架",
+    "region": "西南区",
+    "hazard_type": "脚手架工程",
+    "excavation_depth": null,
+    "scaffold_height": 48.0,
+    "lifting_weight": null,
+    "surrounding_env": "开阔机场场地",
+    "planned_duration": 60,
+    "has_monitoring": true,
+    "has_emergency_plan": true,
+    "has_expert_review_date": true,
+    "has_chief_review": true
+  }
+]

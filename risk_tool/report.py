@@ -1,18 +1,19 @@
-from typing import List
+from typing import List, Dict
+from collections import defaultdict
 from risk_tool.models import RiskResult
-from risk_tool.classifier import KEY_SUPERVISION, EXCEEDING
+from risk_tool.classifier import KEY_SUPERVISION, EXCEEDING, GENERAL
 
 
 LEVEL_ICONS = {
-    "一般危大": "●",
-    "超过一定规模危大": "▲",
-    "重点督办": "★★★",
+    GENERAL: "●",
+    EXCEEDING: "▲",
+    KEY_SUPERVISION: "★★★",
 }
 
 LEVEL_COLORS = {
-    "一般危大": "\033[92m",
-    "超过一定规模危大": "\033[93m",
-    "重点督办": "\033[91m",
+    GENERAL: "\033[92m",
+    EXCEEDING: "\033[93m",
+    KEY_SUPERVISION: "\033[91m",
 }
 
 RESET = "\033[0m"
@@ -21,6 +22,17 @@ CYAN = "\033[96m"
 DIM = "\033[2m"
 RED = "\033[91m"
 YELLOW = "\033[93m"
+
+
+def _summarize_by_region(results: List[RiskResult]) -> Dict[str, dict]:
+    region_stats = defaultdict(lambda: {"total": 0, GENERAL: 0, EXCEEDING: 0, KEY_SUPERVISION: 0, "missing": 0})
+    for r in results:
+        s = region_stats[r.region]
+        s["total"] += 1
+        s[r.level] += 1
+        if r.missing_items:
+            s["missing"] += 1
+    return dict(region_stats)
 
 
 def print_results(results: List[RiskResult], verbose: bool = True):
@@ -32,45 +44,64 @@ def print_results(results: List[RiskResult], verbose: bool = True):
     print(f"{BOLD}  危大工程方案风险评分报告{RESET}")
     print(f"{'='*60}")
 
-    for i, r in enumerate(results, 1):
-        color = LEVEL_COLORS.get(r.level, "")
-        icon = LEVEL_ICONS.get(r.level, "○")
-        print(f"\n{BOLD}[{i}] {r.project_name}{RESET}  {DIM}({r.region}){RESET}")
-        print(f"    工程类型: {r.hazard_type}")
-        print(f"    风险等级: {color}{icon} {r.level}{RESET}")
+    if verbose:
+        for i, r in enumerate(results, 1):
+            color = LEVEL_COLORS.get(r.level, "")
+            icon = LEVEL_ICONS.get(r.level, "○")
+            print(f"\n{BOLD}[{i}] {r.project_name}{RESET}  {DIM}({r.region}){RESET}")
+            print(f"    工程类型: {r.hazard_type}")
+            print(f"    风险等级: {color}{icon} {r.level}{RESET}")
 
-        if r.triggers:
-            print(f"    触发原因:")
-            for t in r.triggers:
-                print(f"      → {t}")
+            if r.triggers:
+                print(f"    触发原因:")
+                for t in r.triggers:
+                    print(f"      → {t}")
 
-        if r.missing_items:
-            print(f"    {RED}缺项提示:{RESET}")
-            for item in r.missing_items:
-                print(f"      ✖ 缺少: {item}")
+            if r.missing_items:
+                print(f"    {RED}缺项提示:{RESET}")
+                for item in r.missing_items:
+                    print(f"      ✖ 缺少: {item}")
 
-        if r.is_key_supervision:
-            print(f"    {RED}{BOLD}★ 重点督办原因:{RESET}")
-            for reason in r.key_reasons:
-                print(f"      → {reason}")
+            if r.is_key_supervision:
+                print(f"    {RED}{BOLD}★ 重点督办原因:{RESET}")
+                for reason in r.key_reasons:
+                    print(f"      → {reason}")
 
     print(f"\n{'-'*60}")
+    print(f"{BOLD}  总体统计{RESET}")
+    print(f"{'-'*60}")
 
-    general = [r for r in results if r.level == "一般危大"]
-    exceeding = [r for r in results if r.level == "超过一定规模危大"]
+    general = [r for r in results if r.level == GENERAL]
+    exceeding = [r for r in results if r.level == EXCEEDING]
     key = [r for r in results if r.level == KEY_SUPERVISION]
 
-    print(f"  统计: 共{len(results)}个项目")
-    print(f"    一般危大:       {len(general)}个")
-    print(f"    超过一定规模:   {len(exceeding)}个")
-    print(f"    重点督办:       {RED}{BOLD}{len(key)}个{RESET}")
+    print(f"  项目总数:   {len(results)}个")
+    print(f"  一般危大:   {len(general)}个")
+    print(f"  超过规模:   {len(exceeding)}个")
+    print(f"  重点督办:   {RED}{BOLD}{len(key)}个{RESET}")
 
     any_missing = [r for r in results if r.missing_items]
     if any_missing:
-        print(f"\n  {YELLOW}存在缺项的项目: {len(any_missing)}个{RESET}")
+        print(f"  存在缺项:   {YELLOW}{len(any_missing)}个{RESET}")
+
+    region_stats = _summarize_by_region(results)
+    if len(region_stats) > 1 or any(any_missing):
+        print(f"\n{'-'*60}")
+        print(f"{BOLD}  区域汇总{RESET}")
+        print(f"{'-'*60}")
+        print(f"  {'区域':<12}{'总数':>5}{'一般':>6}{'超规模':>7}{'重点督办':>8}{'缺项':>6}")
+        print(f"  {'-'*50}")
+        for region in sorted(region_stats.keys()):
+            s = region_stats[region]
+            key_str = f"{RED}{BOLD}{s[KEY_SUPERVISION]}{RESET}" if s[KEY_SUPERVISION] > 0 else f"{s[KEY_SUPERVISION]}"
+            missing_str = f"{YELLOW}{s['missing']}{RESET}" if s['missing'] > 0 else f"{s['missing']}"
+            print(f"  {region:<12}{s['total']:>5}{s[GENERAL]:>6}{s[EXCEEDING]:>7}    {key_str}{'':<8}{missing_str}")
+
+    if any_missing:
+        print(f"\n{YELLOW}  缺项明细:{RESET}")
         for r in any_missing:
             items_str = "、".join(r.missing_items)
-            print(f"    - {r.project_name}: 缺 {items_str}")
+            print(f"    - {r.project_name} ({r.region}): 缺 {items_str}")
 
     print(f"{'='*60}\n")
 
@@ -83,22 +114,43 @@ def print_inspection_list(results: List[RiskResult]):
 
     print(f"\n{'='*60}")
     print(f"{BOLD}{RED}  巡检核查清单{RESET}")
+    print(f"  共 {len(high_risk)} 个高风险项目")
     print(f"{'='*60}")
 
     for i, r in enumerate(high_risk, 1):
         icon = "★★★" if r.level == KEY_SUPERVISION else "▲"
+        color = RED if r.level == KEY_SUPERVISION else YELLOW
         print(f"\n{BOLD}{i}. {r.project_name}{RESET}  {DIM}({r.region} / {r.hazard_type}){RESET}")
-        print(f"   等级: {icon} {r.level}")
+        print(f"   等级: {color}{icon} {r.level}{RESET}")
 
         if r.missing_items:
             items_str = "、".join(r.missing_items)
             print(f"   {RED}缺项: {items_str}{RESET}")
 
         if r.inspection_questions:
-            print(f"   现场追问:")
+            print(f"   现场追问 ({len(r.inspection_questions)}条):")
             for j, q in enumerate(r.inspection_questions, 1):
                 print(f"     {j}) {q}")
         else:
             print(f"   {DIM}(无可自动生成的追问项，请根据现场情况灵活核查){RESET}")
 
     print(f"\n{'='*60}\n")
+
+
+def print_region_summary(results: List[RiskResult]):
+    region_stats = _summarize_by_region(results)
+    if not region_stats:
+        print(f"\n{DIM}暂无数据。{RESET}\n")
+        return
+
+    print(f"\n{'='*60}")
+    print(f"{BOLD}  区域风险汇总{RESET}")
+    print(f"{'='*60}")
+    print(f"  {'区域':<14}{'总数':>5}{'一般危大':>8}{'超规模':>7}{'重点督办':>8}{'缺项':>6}")
+    print(f"  {'-'*52}")
+    for region in sorted(region_stats.keys()):
+        s = region_stats[region]
+        key_str = f"{RED}{BOLD}{s[KEY_SUPERVISION]}{RESET}" if s[KEY_SUPERVISION] > 0 else f"{s[KEY_SUPERVISION]}"
+        missing_str = f"{YELLOW}{s['missing']}{RESET}" if s['missing'] > 0 else f"{s['missing']}"
+        print(f"  {region:<14}{s['total']:>5}{s[GENERAL]:>8}{s[EXCEEDING]:>7}    {key_str}{'':<10}{missing_str}")
+    print(f"{'='*60}\n")

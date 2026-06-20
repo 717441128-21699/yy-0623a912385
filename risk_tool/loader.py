@@ -1,4 +1,5 @@
 import json
+import os
 from typing import List
 from risk_tool.models import Project, RiskResult
 from risk_tool.classifier import classify
@@ -27,6 +28,27 @@ def load_projects(filepath: str) -> List[Project]:
     return projects
 
 
+def load_projects_from_dir(dirpath: str) -> List[Project]:
+    if not os.path.isdir(dirpath):
+        return []
+    all_projects = []
+    json_files = sorted([f for f in os.listdir(dirpath) if f.endswith(".json")])
+    for fname in json_files:
+        fpath = os.path.join(dirpath, fname)
+        try:
+            projects = load_projects(fpath)
+            all_projects.extend(projects)
+        except Exception as e:
+            print(f"警告: 读取文件 {fname} 失败 - {e}")
+    return all_projects
+
+
+def find_json_files(dirpath: str) -> List[str]:
+    if not os.path.isdir(dirpath):
+        return []
+    return sorted([os.path.join(dirpath, f) for f in os.listdir(dirpath) if f.endswith(".json")])
+
+
 def filter_projects(projects: List[Project], name: str = None, region: str = None) -> List[Project]:
     result = projects
     if name:
@@ -36,5 +58,5 @@ def filter_projects(projects: List[Project], name: str = None, region: str = Non
     return result
 
 
-def evaluate(projects: List[Project]) -> List[RiskResult]:
-    return [classify(p) for p in projects]
+def evaluate(projects: List[Project], config: dict) -> List[RiskResult]:
+    return [classify(p, config) for p in projects]
